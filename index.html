@@ -1,0 +1,146 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Lista de Filme Favorite</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+<div class="container mx-auto mt-10 p-6 bg-white shadow-lg rounded-lg">
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Lista de Filme Favorite</h1>
+    <div class="flex justify-between mb-6">
+        <input class="w-4/5 p-2 border border-gray-300 rounded-lg" id="movie-input" placeholder="Adaugă un film nou..." type="text"/>
+        <button class="ml-4 p-2 bg-green-500 text-white rounded-lg hover:bg-green-600" id="add-movie-btn">
+            <i class="fas fa-plus"></i> Adaugă
+        </button>
+    </div>
+    <ul class="movie-list p-4 rounded-lg" id="movie-list" style="background: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet);"></ul>
+</div>
+
+<script>
+    const movieListElement = document.getElementById('movie-list');
+    const movieInputElement = document.getElementById('movie-input');
+
+    // Funcția pentru a salva lista în localStorage
+    function saveMoviesToLocalStorage(movies) {
+        localStorage.setItem('favoriteMovies', JSON.stringify(movies));
+    }
+
+    // Funcția pentru a încărca lista din localStorage
+    function loadMoviesFromLocalStorage() {
+        const movies = JSON.parse(localStorage.getItem('favoriteMovies')) || [];
+        return movies;
+    }
+
+    // Funcția pentru a actualiza lista pe ecran
+    function renderMovieList(movies) {
+        movieListElement.innerHTML = ''; // Golește lista
+        movies.forEach((movie) => {
+            const newMovieItem = document.createElement('li');
+            newMovieItem.className = 'movie-item flex justify-between items-center p-2 bg-white rounded-lg mb-2 shadow-sm';
+            newMovieItem.innerHTML = `
+                <img src="https://placehold.co/50x50" alt="Poster" class="w-12 h-12 rounded-lg">
+                <span class="movie-title flex-grow ml-4 text-gray-800">${movie.title}</span>
+                <div class="flex items-center space-x-2">
+                    <div class="star-rating text-yellow-400">
+                        ${[...Array(5)].map((_, i) => `
+                            <i class="fas fa-star ${i < movie.rating ? 'text-yellow-500' : 'text-yellow-300'}" data-star="${i + 1}"></i>
+                        `).join('')}
+                    </div>
+                    <button class="edit-btn text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>
+                    <button class="delete-btn text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+            movieListElement.appendChild(newMovieItem);
+        });
+    }
+
+    // Funcția pentru adăugarea unui film nou
+    function addMovie() {
+        const movieTitle = movieInputElement.value.trim();
+        if (movieTitle) {
+            const movies = loadMoviesFromLocalStorage();
+            movies.push({ title: movieTitle, rating: 0 }); // Adaugă filmul cu rating 0
+            saveMoviesToLocalStorage(movies); // Salvează în localStorage
+            renderMovieList(movies); // Actualizează lista pe ecran
+            movieInputElement.value = ''; // Golește câmpul de introducere
+        }
+    }
+
+    // Eveniment pentru clic pe butonul "Adaugă"
+    document.getElementById('add-movie-btn').addEventListener('click', addMovie);
+
+    // Eveniment pentru apăsarea tastei Enter
+    movieInputElement.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // Previne comportamentul implicit
+            addMovie();
+        }
+    });
+
+    // Gestionarea acțiunilor din lista de filme
+    movieListElement.addEventListener('click', function (e) {
+        const target = e.target;
+        const movies = loadMoviesFromLocalStorage();
+
+        // Ștergerea unui film
+        if (target.classList.contains('delete-btn') || target.parentElement.classList.contains('delete-btn')) {
+            const movieItem = target.closest('.movie-item');
+            const title = movieItem.querySelector('.movie-title').textContent;
+            const updatedMovies = movies.filter((movie) => movie.title !== title);
+            saveMoviesToLocalStorage(updatedMovies); // Salvează lista actualizată
+            renderMovieList(updatedMovies); // Actualizează lista pe ecran
+        }
+
+        // Editarea unui film
+        if (target.classList.contains('edit-btn') || target.parentElement.classList.contains('edit-btn')) {
+            const movieItem = target.closest('.movie-item');
+            const titleSpan = movieItem.querySelector('.movie-title');
+            const currentTitle = titleSpan.textContent;
+
+            const inputField = document.createElement('input');
+            inputField.type = 'text';
+            inputField.value = currentTitle;
+            inputField.className = 'w-full p-1 border border-gray-300 rounded-lg';
+            titleSpan.replaceWith(inputField);
+            inputField.focus();
+
+            inputField.addEventListener('blur', function () {
+                const newTitle = inputField.value.trim();
+                const updatedMovies = movies.map((movie) =>
+                    movie.title === currentTitle ? { ...movie, title: newTitle || currentTitle } : movie
+                );
+                saveMoviesToLocalStorage(updatedMovies); // Salvează lista actualizată
+                renderMovieList(updatedMovies); // Actualizează lista pe ecran
+            });
+
+            inputField.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    inputField.blur();
+                }
+            });
+        }
+
+        // Acordarea de stele
+        if (target.classList.contains('fa-star')) {
+            const movieItem = target.closest('.movie-item');
+            const title = movieItem.querySelector('.movie-title').textContent;
+            const selectedStar = parseInt(target.dataset.star);
+            const updatedMovies = movies.map((movie) =>
+                movie.title === title ? { ...movie, rating: selectedStar } : movie
+            );
+            saveMoviesToLocalStorage(updatedMovies); // Salvează lista actualizată
+            renderMovieList(updatedMovies); // Actualizează lista pe ecran
+        }
+    });
+
+    // La încărcarea paginii, încarcă filmele din localStorage
+    document.addEventListener('DOMContentLoaded', function () {
+        const movies = loadMoviesFromLocalStorage();
+        renderMovieList(movies);
+    });
+</script>
+</body>
+</html>
